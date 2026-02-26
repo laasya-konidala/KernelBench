@@ -233,6 +233,7 @@ def main(config: EvalConfig):
     --- TASK ---
     """
     custom_prompt = rag_prefix + custom_prompt
+    print("RAG_CONTEXT: ", rag_context)
     print(custom_prompt)
     os.makedirs(config.logdir, exist_ok=True)
 
