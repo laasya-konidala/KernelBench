@@ -10,6 +10,7 @@ from pathlib import Path
 import json
 from dotenv import load_dotenv
 import os
+from firecrawl import Firecrawl
 load_dotenv()
 
 
@@ -57,7 +58,6 @@ def scrape_using_firecrawl():
         print(f"Loaded {len(data)} pages from cache.")
         return data
 
-    from firecrawl import Firecrawl
     app = Firecrawl(api_key=FIRECRAWL_API_KEY)
     print(f"Crawling {FIRECRAWL_URL} (limit={FIRECRAWL_LIMIT})...")
     result = app.crawl(
