@@ -1,0 +1,9 @@
+[submodule "hip_rag/HIP"]
+	path = hip_rag/HIP
+	url = https://github.com/ROCm/HIP
+[submodule "hip_rag/ROCm"]
+	path = hip_rag/ROCm
+	url = https://github.com/ROCm/ROCm
+[submodule "hip_rag/rocm-examples"]
+	path = hip_rag/rocm-examples
+	url = https://github.com/ROCm/rocm-examples
