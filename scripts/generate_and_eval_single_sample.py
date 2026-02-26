@@ -14,6 +14,8 @@ from kernelbench.utils import (
     set_gpu_arch,
 )
 from kernelbench.eval import get_torch_dtype_from_string
+
+from hip_rag.rag_over_hip import get_rag_context
 """
 Generate and evaluate a single sample
 Easiest way to get started, to test a single problem for experimentation or debugging
@@ -219,6 +221,17 @@ def main(config: EvalConfig):
             gpu_name=config.hardware_gpu_name,
         )
     
+    # Adding rag context
+    rag_context = get_rag_context(ref_arch_src)
+    rag_prefix = f"""The following excerpts from HIP documentation may help you write
+    correct, efficient HIP kernels: 
+    --- HIP DOCUMENTATION ---
+    {rag_context}
+    
+    --- TASK ---
+    """
+    custom_prompt = rag_prefix + custom_prompt
+    print(custom_prompt[:100])
     os.makedirs(config.logdir, exist_ok=True)
 
     if config.log_prompt:
