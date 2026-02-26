@@ -234,6 +234,8 @@ def main(config: EvalConfig):
     """
     custom_prompt = rag_prefix + custom_prompt
     print("\n HELLO \n ")
+    print("\n RAG CONTEXT BELOW \n")
+    print(rag_context)
     os.makedirs(config.logdir, exist_ok=True)
 
     if config.log_prompt:
