@@ -149,17 +149,23 @@ def generate_sample_single(
     if config.check_kernel:
         static_check_status, error, warnings = validate_kernel_static(custom_kernel,
             backend=config.backend,
-            precision=config.precision, 
-            # uses the default set of forbidden and warning patterns, 
+            precision=config.precision,
+            # uses the default set of forbidden and warning patterns,
             # you could adapt the patterns to your own setting (degree of banning cuda stream, allowing some torch ops)
         )
-        assert static_check_status, f"Static check failed for sample {work.sample_id} for problem {problem_number}: {problem_name}. Error: {error}. Warnings: {warnings}"
+        assert static_check_status, (
+            f"Static check failed for sample {work.sample_id} for problem {work.problem_id}: "
+            f"{problem_name}. Error: {error}. Warnings: {warnings}"
+        )
         if warnings:
-            print(f"Static check warnings for sample {work.sample_id} for problem {problem_number}: {problem_name}. Warnings: {warnings}")
+            print(
+                f"Static check warnings for sample {work.sample_id} for problem {work.problem_id}: "
+                f"{problem_name}. Warnings: {warnings}"
+            )
 
     if config.verbose:
         print(
-            f"Generated sample {work.sample_id} for problem {problem_number}: {problem_name}"
+            f"Generated sample {work.sample_id} for problem {work.problem_id}: {problem_name}"
         )
 
     # Store to local file
