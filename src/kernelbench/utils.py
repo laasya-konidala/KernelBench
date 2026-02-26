@@ -22,6 +22,7 @@ from openai import OpenAI
 from litellm import completion
 
 import numpy as np
+import torch
 from contextlib import contextmanager
 from collections import defaultdict
 import time
