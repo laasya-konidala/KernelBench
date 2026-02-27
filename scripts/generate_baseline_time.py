@@ -1,3 +1,4 @@
+import argparse
 import torch
 import numpy as np
 from kernelbench.dataset import construct_kernelbench_dataset, fetch_ref_arch_from_dataset
@@ -5,6 +6,7 @@ from kernelbench.timing import measure_ref_program_time
 from kernelbench.utils import read_file
 import os
 import json
+import sys
 from tqdm import tqdm
 
 """
@@ -105,40 +107,53 @@ def test_measure_particular_program(level_num: int, problem_id: int):
 
 
 if __name__ == "__main__":
-    # DEBUG and simple testing
-    # test_measure_particular_program(2, 28)
-    
-    # Replace this with whatever hardware you are running on 
-    # hardware_name = "L40S_matx3"
-    hardware_name = "H100_PCIe_LambdaLabs"
+    parser = argparse.ArgumentParser(description="Generate baseline timing for your hardware (works on NVIDIA and AMD/ROCm).")
+    parser.add_argument("--hardware", "-H", type=str, default="H100_PCIe_LambdaLabs",
+                        help="Hardware name; results saved to results/timing/<hardware>/ (e.g. MI350_matx for AMD)")
+    parser.add_argument("--precision", "-p", type=str, default="fp32", choices=["fp32", "fp16", "bf16"],
+                        help="Precision for baseline (match your eval precision, default fp32)")
+    parser.add_argument("--eager-only", action="store_true",
+                        help="Only record torch eager baseline (skip torch.compile; use on AMD if inductor/cudagraphs fail)")
+    parser.add_argument("--yes", "-y", action="store_true", help="Skip confirmation prompts")
+    args = parser.parse_args()
+    hardware_name = args.hardware
 
-    input(f"You are about to start recording baseline time for {hardware_name}, press Enter to continue...")
-    # Systematic recording of baseline time
+    if not args.yes:
+        input(f"You are about to start recording baseline time for {hardware_name}, press Enter to continue...")
+    if os.path.exists(os.path.join(TIMING_DIR, hardware_name)) and not args.yes:
+        input(f"Directory {hardware_name} already exists. Overwrite? Enter to continue...")
 
-    if os.path.exists(os.path.join(TIMING_DIR, hardware_name)):
-        input(f"Directory {hardware_name} already exists, Are you sure you want to overwrite? Enter to continue...")
-
-    # 1. Record Torch Eager
-    record_baseline_times(use_torch_compile=False, 
+    # 1. Record Torch Eager (works on AMD/ROCm)
+    record_baseline_times(use_torch_compile=False,
                           torch_compile_backend=None,
-                          torch_compile_options=None, 
+                          torch_compile_options=None,
                           file_name=f"{hardware_name}/baseline_time_torch.json",
-                          precision="bf16")
-    
-    # 2. Record Torch Compile using Inductor
+                          precision=args.precision)
+
+    if args.eager_only:
+        print("Eager baseline saved. Done (--eager-only).")
+        sys.exit(0)
+
+    # 2. Record Torch Compile using Inductor (usually works on AMD)
     for torch_compile_mode in ["default", "reduce-overhead", "max-autotune", "max-autotune-no-cudagraphs"]:
-        record_baseline_times(use_torch_compile=True, 
-                              torch_compile_backend="inductor",
-                              torch_compile_options=torch_compile_mode, 
-                              file_name=f"{hardware_name}/baseline_time_torch_compile_inductor_{torch_compile_mode}.json",
-                              precision="bf16")
- 
-    # 3. Record Torch Compile using cudagraphs
-    record_baseline_times(use_torch_compile=True, 
-                          torch_compile_backend="cudagraphs",
-                          torch_compile_options=None, 
-                          file_name=f"{hardware_name}/baseline_time_torch_compile_cudagraphs.json",
-                          precision="bf16")
+        try:
+            record_baseline_times(use_torch_compile=True,
+                                  torch_compile_backend="inductor",
+                                  torch_compile_options=torch_compile_mode,
+                                  file_name=f"{hardware_name}/baseline_time_torch_compile_inductor_{torch_compile_mode}.json",
+                                  precision=args.precision)
+        except Exception as e:
+            print(f"Warning: inductor {torch_compile_mode} failed: {e}. Continuing.")
+
+    # 3. Record Torch Compile using cudagraphs (NVIDIA-only; may fail on AMD)
+    try:
+        record_baseline_times(use_torch_compile=True,
+                              torch_compile_backend="cudagraphs",
+                              torch_compile_options=None,
+                              file_name=f"{hardware_name}/baseline_time_torch_compile_cudagraphs.json",
+                              precision=args.precision)
+    except Exception as e:
+        print(f"Warning: cudagraphs failed (expected on AMD): {e}. Skipped.")
     
 
 
