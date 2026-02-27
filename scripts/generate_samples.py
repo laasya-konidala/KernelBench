@@ -17,6 +17,7 @@ from kernelbench.utils import (
     set_gpu_arch,
 )
 from kernelbench.kernel_static_checker import validate_kernel_static
+from hip_rag.rag_over_hip import get_rag_context
 
 """
 Batch Generate Samples for Particular Level
@@ -51,11 +52,6 @@ class GenerationConfig(Config):
         # num of thread pool to call inference server in parallel
         self.num_workers = 64
         self.api_query_interval = 0.0
-
-        # Exponential backoff on API rate limit (passed to query_server)
-        self.max_retries = 5
-        self.initial_delay = 1.0
-        self.backoff_factor = 2.0
 
         # Inference config
         self.server_type = None
@@ -135,6 +131,16 @@ def generate_sample_single(
             include_hardware=config.include_hardware_info,
             gpu_name=config.hardware_gpu_name,
         )
+
+    rag_context = get_rag_context(ref_arch_src)
+    rag_prefix = f"""The following excerpts from HIP documentation may help you write
+correct, efficient HIP kernels:
+--- HIP DOCUMENTATION ---
+{rag_context}
+
+--- TASK ---
+"""
+    custom_prompt = rag_prefix + custom_prompt
     if config.log_prompt:
         prompt_path = os.path.join(
             run_dir,
@@ -158,9 +164,15 @@ def generate_sample_single(
             # uses the default set of forbidden and warning patterns,
             # you could adapt the patterns to your own setting (degree of banning cuda stream, allowing some torch ops)
         )
-        assert static_check_status, f"Static check failed for sample {work.sample_id} for problem {work.problem_id}: {problem_name}. Error: {error}. Warnings: {warnings}"
+        assert static_check_status, (
+            f"Static check failed for sample {work.sample_id} for problem {work.problem_id}: "
+            f"{problem_name}. Error: {error}. Warnings: {warnings}"
+        )
         if warnings:
-            print(f"Static check warnings for sample {work.sample_id} for problem {work.problem_id}: {problem_name}. Warnings: {warnings}")
+            print(
+                f"Static check warnings for sample {work.sample_id} for problem {work.problem_id}: "
+                f"{problem_name}. Warnings: {warnings}"
+            )
 
     if config.verbose:
         print(
@@ -185,10 +197,8 @@ def generate_sample_launcher(
     inference_server: callable,
     run_dir: str,
 ):
-    """Returns the WorkArgs on success (so callers can see which succeeded/failed), None on failure."""
     try:
-        generate_sample_single(work, config, dataset, inference_server, run_dir)
-        return work
+        return generate_sample_single(work, config, dataset, inference_server, run_dir)
     except Exception as e:
         print(f"Error generating sample {work.problem_id} {work.sample_id}: {e}")
         return None
@@ -328,9 +338,6 @@ def main(config: GenerationConfig):
         is_reasoning_model=config.is_reasoning_model,
         reasoning_effort=config.reasoning_effort,
         budget_tokens=config.budget_tokens,
-        max_retries=config.max_retries,
-        initial_delay=config.initial_delay,
-        backoff_factor=config.backoff_factor,
     )
 
     # Launch workers
@@ -346,27 +353,17 @@ def main(config: GenerationConfig):
         run_dir=run_dir,
     )
 
-    succeeded_work = [w for w in generation_results if w is not None]
-    num_generated_samples = len(succeeded_work)
+    num_generated_samples = len(generation_results)
     num_attempted = len(problems_to_run)
-    num_failed = num_attempted - num_generated_samples
-    failed_work = [w for w in problems_to_run if w not in succeeded_work]
-
+    num_failed_problems = num_attempted - num_generated_samples
+    
     if num_attempted == 0:
         print(f"\n✅ All {total_problems} kernels already exist in {run_dir}")
         print(f"   Use a different run_name if you want to generate fresh samples.\n")
     else:
-        print(f"\n{'='*60}")
-        print("Generation summary")
-        print(f"{'='*60}")
-        print(f"  Saved:     {num_generated_samples} samples (written to {run_dir})")
-        print(f"  Attempted: {num_attempted}")
-        print(f"  Failed:    {num_failed}")
-        if failed_work:
-            failed_ids = [(w.problem_id, w.sample_id) for w in failed_work]
-            print(f"  Failed (problem_id, sample_id): {failed_ids[:20]}{' ...' if len(failed_ids) > 20 else ''}")
-            print(f"  Re-run the same command to retry only missing samples (existing kernels are skipped).")
-        print(f"{'='*60}\n")
+        print(
+            f"\nGenerated {num_generated_samples} samples for total {num_attempted} problems, Please retry for the {num_failed_problems} failed problems."
+        )
 
 
 if __name__ == "__main__":
