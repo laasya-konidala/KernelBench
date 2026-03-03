@@ -111,8 +111,10 @@ def query_server(
     # Local Server (SGLang, vLLM, Tokasaurus) - special handling
     if server_type == "local":
         url = f"http://{server_address}:{server_port}"
+        # Local servers typically don't validate; client requires api_key to be set
+        api_key = SGLANG_KEY or "not-needed"
         client = OpenAI(
-            api_key=SGLANG_KEY, base_url=f"{url}/v1", timeout=None, max_retries=0
+            api_key=api_key, base_url=f"{url}/v1", timeout=None, max_retries=0
         )
         if isinstance(prompt, str):
             response = client.completions.create(
