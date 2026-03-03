@@ -223,10 +223,10 @@ SERVER_PRESETS = {
         "temperature": 0.7,
         "max_tokens": 4096,
     },
-    "local": {  # this is for running locally (SGLang, vLLM, Tokasaurus), mostly for Llama
-        "temperature": 0.8, # human eval pass@N temperature
-        "server_port": 10210,
-        "server_address": "matx2.stanford.edu",
+    "local": {  # self-hosted Llama (e.g. FastAPI server on same node)
+        "temperature": 0.0,
+        "server_port": 8000,
+        "server_address": "127.0.0.1",
         "max_tokens": 8192,
     },
     "anthropic": {  # for Claude 3.7 Sonnet
