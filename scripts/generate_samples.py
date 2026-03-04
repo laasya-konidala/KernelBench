@@ -17,6 +17,7 @@ from kernelbench.utils import (
     set_gpu_arch,
 )
 from kernelbench.kernel_static_checker import validate_kernel_static
+from hip_rag.rag_over_hip import get_rag_context
 
 """
 Batch Generate Samples for Particular Level
@@ -75,6 +76,10 @@ class GenerationConfig(Config):
 
         self.log_prompt = False
 
+        # Retrieval-Augmented Generation (RAG)
+        # When True, prepend HIP documentation context to the prompt
+        self.use_rag = True
+
         self.backend = "cuda"
         
         self.precision = "fp32"
@@ -130,6 +135,18 @@ def generate_sample_single(
             include_hardware=config.include_hardware_info,
             gpu_name=config.hardware_gpu_name,
         )
+    # Optional: adding RAG context (HIP documentation)
+    if config.use_rag:
+        rag_context = get_rag_context(ref_arch_src)
+        rag_prefix = f"""The following excerpts from HIP documentation may help you write
+correct, efficient HIP kernels:
+--- HIP DOCUMENTATION ---
+{rag_context}
+
+--- TASK ---
+"""
+        custom_prompt = rag_prefix + custom_prompt
+
     if config.log_prompt:
         prompt_path = os.path.join(
             run_dir,
