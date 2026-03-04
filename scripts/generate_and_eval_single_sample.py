@@ -72,6 +72,11 @@ class EvalConfig(Config):
         self.log_generated_kernel = False
         self.log_eval_result = False
 
+        # Retrieval-Augmented Generation (RAG)
+        # When True, prepend HIP documentation context to the prompt
+        # Default to False so baseline runs are without RAG unless explicitly enabled.
+        self.use_rag = False
+
         self.backend = "cuda"
         self.timing_method = "cuda_event"  # see timing.py
 
@@ -223,19 +228,17 @@ def main(config: EvalConfig):
             gpu_name=config.hardware_gpu_name,
         )
     
-    # Adding rag context
-    rag_context = get_rag_context(ref_arch_src)
-    rag_prefix = f"""The following excerpts from HIP documentation may help you write
-    correct, efficient HIP kernels: 
-    --- HIP DOCUMENTATION ---
-    {rag_context}
-    
-    --- TASK ---
-    """
-    custom_prompt = rag_prefix + custom_prompt
-    print("\n HELLO \n ")
-    print("\n RAG CONTEXT BELOW \n")
-    print(custom_prompt[:500])
+    # Optional: adding RAG context (HIP documentation)
+    if config.use_rag:
+        rag_context = get_rag_context(ref_arch_src)
+        rag_prefix = f"""The following excerpts from HIP documentation may help you write
+        correct, efficient HIP kernels: 
+        --- HIP DOCUMENTATION ---
+        {rag_context}
+        
+        --- TASK ---
+        """
+        custom_prompt = rag_prefix + custom_prompt
     os.makedirs(config.logdir, exist_ok=True)
 
     if config.log_prompt:
