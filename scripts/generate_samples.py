@@ -76,7 +76,6 @@ class GenerationConfig(Config):
 
         self.log_prompt = False
 
-        # Retrieval-Augmented Generation (RAG)
         # When True, prepend HIP documentation context to the prompt.
         # Default to False so baseline batch runs are without RAG unless explicitly enabled.
         self.use_rag = False

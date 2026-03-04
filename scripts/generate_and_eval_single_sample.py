@@ -72,7 +72,6 @@ class EvalConfig(Config):
         self.log_generated_kernel = False
         self.log_eval_result = False
 
-        # Retrieval-Augmented Generation (RAG)
         # When True, prepend HIP documentation context to the prompt
         # Default to False so baseline runs are without RAG unless explicitly enabled.
         self.use_rag = False
