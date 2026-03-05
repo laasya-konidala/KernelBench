@@ -111,33 +111,29 @@ def query_server(
     # Local Server (SGLang, vLLM, Tokasaurus) - special handling
     if server_type == "local":
         url = f"http://{server_address}:{server_port}"
-        # Local servers typically don't validate; client requires api_key to be set
         api_key = SGLANG_KEY or "not-needed"
         client = OpenAI(
             api_key=api_key, base_url=f"{url}/v1", timeout=None, max_retries=0
         )
+        # Always use chat completions for instruct models (Llama 3.1 Instruct, etc.)
         if isinstance(prompt, str):
-            response = client.completions.create(
-                model="default",
-                prompt=prompt,
-                temperature=temperature,
-                n=num_completions,
-                max_tokens=max_tokens,
-                top_p=top_p,
-            )
-            outputs = [choice.text for choice in response.choices]
+            messages = [
+                {"role": "system", "content": "You are a helpful assistant that writes high-performance GPU kernel code."},
+                {"role": "user", "content": prompt},
+            ]
         else:
-            response = client.chat.completions.create(
-                model="default",
-                messages=prompt,
-                temperature=temperature,
-                n=num_completions,
-                max_tokens=max_tokens,
-                top_p=top_p,
-            )
-            outputs = [choice.message.content for choice in response.choices]
+            messages = prompt
+        response = client.chat.completions.create(
+            model="default",
+            messages=messages,
+            temperature=temperature,
+            n=num_completions,
+            max_tokens=max_tokens,
+            top_p=top_p,
+            frequency_penalty=0.3,
+        )
+        outputs = [choice.message.content for choice in response.choices]
         
-        # output processing
         if len(outputs) == 1:
             return outputs[0]
         else:
@@ -226,7 +222,7 @@ SERVER_PRESETS = {
         "max_tokens": 4096,
     },
     "local": {  # self-hosted Llama (e.g. FastAPI server on same node)
-        "temperature": 0.0,
+        "temperature": 0.3,
         "server_port": 8000,
         "server_address": "127.0.0.1",
         "max_tokens": 8192,
