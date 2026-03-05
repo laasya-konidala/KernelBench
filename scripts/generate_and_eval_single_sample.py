@@ -245,8 +245,10 @@ def main(config: EvalConfig):
             f.write(custom_prompt)
 
     # Query server with constructed prompt
-    custom_kernel = inference_server(custom_prompt)
-    custom_kernel = extract_first_code(custom_kernel, ["python", "cpp"])
+    raw_response = inference_server(custom_prompt)
+    if config.verbose:
+        print("LLM raw response:\n", raw_response)
+    custom_kernel = extract_first_code(raw_response, ["python", "cpp"])
 
     # check LLM is able to generate custom kernel code
     assert (
