@@ -243,6 +243,11 @@ SERVER_PRESETS = {
         "temperature": 0.7,
         "max_tokens": 4096,
     },
+    "openrouter": {  # OpenRouter API; set OPENROUTER_API_KEY in env
+        "model_name": "openrouter/qwen/qwq-32b",
+        "temperature": 0.3,
+        "max_tokens": 8192,
+    },
 }
 
 
