@@ -58,17 +58,17 @@ def _create_app():
     @fastapi_app.post("/v1/chat/completions")
     def chat_completions(body: ChatCompletionRequest):
         text = tokenizer.apply_chat_template(
-            [{"role": m.role, "content": m.content} for m in request.messages],
+            [{"role": m.role, "content": m.content} for m in body.messages],
             tokenize=False,
             add_generation_prompt=True,
         )
         inputs = tokenizer(text, return_tensors="pt").to(model.device)
         gen = model.generate(
             **inputs,
-            max_new_tokens=request.max_tokens,
-            temperature=request.temperature if request.temperature > 0 else 1e-6,
-            top_p=request.top_p,
-            do_sample=request.temperature > 0,
+            max_new_tokens=body.max_tokens,
+            temperature=body.temperature if body.temperature > 0 else 1e-6,
+            top_p=body.top_p,
+            do_sample=body.temperature > 0,
             pad_token_id=tokenizer.eos_token_id,
         )
         reply = tokenizer.decode(gen[0][inputs.input_ids.shape[1] :], skip_special_tokens=True)
