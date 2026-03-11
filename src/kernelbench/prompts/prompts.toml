@@ -14,7 +14,19 @@ You have complete freedom to choose the set of operators you want to replace. Yo
 """
 
 instruction = """
-Optimize the architecture named Model with custom {backend_display}! Name your optimized output architecture ModelNew. Output the new code in codeblocks. Please generate real code, NOT pseudocode, make sure the code compiles and is fully functional. Just output the new model code, no other text, and NO testing code!
+Optimize the architecture named Model with custom {backend_display}. Name the optimized architecture ModelNew.
+
+Return ONLY a single markdown code block containing the full ModelNew implementation.
+
+Strict requirements:
+	•	Output exactly one markdown code block.
+	•	No text before the code block.
+	•	No text after the code block.
+	•	No explanations, reasoning, or commentary.
+	•	No additional code blocks.
+	•	No testing or example code.
+	•	The code must be complete, functional, and compile successfully.
+	•	The code block must contain the entire ModelNew implementation.
 """
 
 # Shared example architecture (same for all backends)
