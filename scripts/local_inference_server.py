@@ -56,7 +56,7 @@ def _create_app():
         frequency_penalty: float = 0.0
 
     @fastapi_app.post("/v1/chat/completions")
-    def chat_completions(request: ChatCompletionRequest):
+    def chat_completions(body: ChatCompletionRequest):
         text = tokenizer.apply_chat_template(
             [{"role": m.role, "content": m.content} for m in request.messages],
             tokenize=False,
