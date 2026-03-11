@@ -15,7 +15,7 @@ import os
 
 def _create_app():
     import torch
-    from fastapi import FastAPI
+    from fastapi import FastAPI, Body
     from fastapi.responses import JSONResponse
     from pydantic import BaseModel
 
@@ -56,7 +56,7 @@ def _create_app():
         frequency_penalty: float = 0.0
 
     @fastapi_app.post("/v1/chat/completions")
-    def chat_completions(body: ChatCompletionRequest):
+    def chat_completions(body: ChatCompletionRequest = Body(...)):
         text = tokenizer.apply_chat_template(
             [{"role": m.role, "content": m.content} for m in body.messages],
             tokenize=False,
