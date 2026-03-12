@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pydantic import BaseModel
+from peft import PeftModel
 
 
 class ChatMessage(BaseModel):
@@ -42,6 +43,9 @@ def _create_app():
         device_map="auto",
         trust_remote_code=True,
     )
+    adapter_dir = os.environ.get("ADAPTER_DIR")
+    if adapter_dir:
+        model = PeftModel.from_pretrained(model, adapter_dir)
     model.eval()
     print("Model loaded.")
 
