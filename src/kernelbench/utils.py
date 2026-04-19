@@ -19,7 +19,7 @@ from importlib.resources import files, as_file
 
 # API clients
 from openai import OpenAI
-from litellm import completion
+from litellm import completion, completion_cost
 
 import numpy as np
 import torch
@@ -184,8 +184,59 @@ def query_server(
             # top_k is not supported by OpenAI models
             if "openai/" not in model_name.lower() and "gpt" not in model_name.lower():
                 completion_kwargs["top_k"] = top_k
-        
+
+        start_time = time.time()
         response = completion(**completion_kwargs)
+        end_time = time.time()
+
+        # Optional: log per-call token usage and cost to JSONL file.
+        # Enable by setting KERNELBENCH_LITELLM_LOG_PATH=/path/to/file.jsonl
+        log_path = os.environ.get("KERNELBENCH_LITELLM_LOG_PATH")
+        if log_path:
+            usage = getattr(response, "usage", None)
+            usage_dict = None
+            if usage is not None:
+                # LiteLLM returns a pydantic-ish object for some providers, dict for others.
+                if hasattr(usage, "model_dump"):
+                    usage_dict = usage.model_dump()
+                elif isinstance(usage, dict):
+                    usage_dict = usage
+                else:
+                    usage_dict = {
+                        k: getattr(usage, k)
+                        for k in ("prompt_tokens", "completion_tokens", "total_tokens")
+                        if hasattr(usage, k)
+                    }
+
+            try:
+                cost_usd = completion_cost(completion_response=response)
+            except Exception:
+                cost_usd = None
+
+            event = {
+                "event": "litellm_completion",
+                "ts": time.time(),
+                "elapsed_s": end_time - start_time,
+                "server_type": server_type,
+                "model": model_name,
+                "usage": usage_dict,
+                "cost_usd": cost_usd,
+                "pid": os.getpid(),
+                "host": os.environ.get("HOSTNAME"),
+                "job_id": os.environ.get("SLURM_JOB_ID") or os.environ.get("JOB_ID"),
+            }
+
+            try:
+                os.makedirs(os.path.dirname(log_path) or ".", exist_ok=True)
+                line = (json.dumps(event, default=str) + "\n").encode("utf-8")
+                fd = os.open(log_path, os.O_APPEND | os.O_CREAT | os.O_WRONLY, 0o644)
+                try:
+                    os.write(fd, line)
+                finally:
+                    os.close(fd)
+            except Exception:
+                # Never fail the actual inference call due to logging issues.
+                pass
         
         # output processing
         if num_completions == 1:
